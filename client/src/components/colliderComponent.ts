@@ -2,6 +2,7 @@ import { Component, IComponent } from './component';
 import { PositionComponent } from './positionComponent';
 import { ILogicComponent } from '../logicSystem';
 import { Rectangle } from './rectangle';
+import { Quadtree } from './quadtree';
 
 export interface ICollisionComponent extends IComponent {
   onCollision(other: ColliderComponent): void;
@@ -11,6 +12,14 @@ export interface ICollisionComponent extends IComponent {
 // On conserve ici une référence vers toutes les instances
 // de cette classe, afin de déterminer si il y a collision.
 const colliders: ColliderComponent[] = [];
+	
+// Le quadtree
+const quadtree : Quadtree = new Quadtree(0, new Rectangle({
+  x: 0,
+  y: 0,
+  width: 768,
+  height: 576,
+}));
 
 // # Classe *ColliderComponent*
 // Ce composant est attaché aux objets pouvant entrer en
@@ -66,13 +75,25 @@ export class ColliderComponent extends Component<IColliderComponentDesc> impleme
       return;
     }
 
-    const area = this.area;
+    quadtree.clear();
+
     colliders.forEach((c) => {
       if (c === this ||
         !c.enabled ||
         !c.owner.active) {
         return;
       }
+
+      if(!(c.flag & this.mask)){
+        return;
+      }
+
+      quadtree.insert(c);
+    });
+
+    const area = this.area;
+    var pertinentColliders = quadtree.retrieve(area);
+    pertinentColliders.forEach((c)=> {
       if (area.intersectsWith(c.area)) {
         this.handler!.onCollision(c);
       }
